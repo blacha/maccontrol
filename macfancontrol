@@ -1,0 +1,31 @@
+#!/usr/bin/env python
+
+from fancontrol.control import FanControl
+import logging
+import sys
+try:
+    import daemon
+except ImportError:
+    logging.error("Unable to import 'daemon' please install python-daemon (apt-get install python-daemon)")
+    exit()
+
+CONFIG_FILE = '/etc/macfancontrol.conf'
+LOG_FILE = '/var/log/macfancontrol.log'
+LOG_LEVEL = logging.INFO
+
+
+with daemon.DaemonContext(stdout=sys.stdout, files_preserve=[]):
+    logger = logging.getLogger('macfancontrol')
+
+    fh = logging.FileHandler(LOG_FILE)
+    fh.setLevel(LOG_LEVEL)
+
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    fh.setFormatter(formatter)
+
+    logger.addHandler(fh)
+    logger.setLevel(LOG_LEVEL)
+    print 'test'
+    fc = FanControl(CONFIG_FILE)
+    fc.run()
+    print 'test2'
