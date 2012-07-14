@@ -2,7 +2,6 @@
 
 from fancontrol.control import FanControl
 import logging
-import sys
 try:
     import daemon
 except ImportError:
@@ -14,7 +13,7 @@ LOG_FILE = '/var/log/macfancontrol.log'
 LOG_LEVEL = logging.INFO
 
 
-with daemon.DaemonContext(stdout=sys.stdout, files_preserve=[]):
+with daemon.DaemonContext():
     logger = logging.getLogger('macfancontrol')
 
     fh = logging.FileHandler(LOG_FILE)
@@ -25,7 +24,6 @@ with daemon.DaemonContext(stdout=sys.stdout, files_preserve=[]):
 
     logger.addHandler(fh)
     logger.setLevel(LOG_LEVEL)
-    print 'test'
+
     fc = FanControl(CONFIG_FILE)
     fc.run()
-    print 'test2'
