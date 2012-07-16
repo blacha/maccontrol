@@ -23,7 +23,7 @@ class FanControl:
 
         max_speed = int(fan['max'])
         if max_speed < speed:
-            logger.warn('Trying to set fanspeed "%d" above the max "%d" for fan %d (rpm has been limited to %d)' % (speed, max_speed, fan_id, max_speed))
+            #logger.warn('Trying to set fanspeed "%d" above the max "%d" for fan %d (rpm has been limited to %d)' % (speed, max_speed, fan_id, max_speed))
             speed = max_speed
 
         last_speed = fan.get('last_speed', -1)
