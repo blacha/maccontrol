@@ -3,14 +3,13 @@ import os
 import fnmatch
 import logging
 import time
-import fancontrol.config as config
+import control.config as config
+from control.fan import FanControl
+from control.backlight import BackLightControl
+logger = logging.getLogger('maccontrol')
 
-logger = logging.getLogger('macfancontrol')
 
-
-class FanControl():
-    fan_properties = ['label', 'manual', 'max', 'min', 'output']
-    coretemp_properties = ['label', 'crit', 'max']
+class MacControl():
 
     def __init__(self, config_file):
         self.config_file = config_file
@@ -23,10 +22,15 @@ class FanControl():
             if self.coretemp is None:
                 logger.warn('Unable to find coretemp directory in /sys, falling back on applesmc temps')
 
+        self.fc = FanControl(self.applesmc)
+        self.kb = BackLightControl(self.applesmc)
+
         self.sensors = {}
         self.__load_coretemp()
         self.__load_applesmc()
         self.load_config(config_file)
+
+        self.light_log = []
 
     def load_config(self, config_file=None):
         errors = False
@@ -48,7 +52,7 @@ class FanControl():
         fans = cfg.get_required_fans()
 
         for fan in fans:
-            if self.fans.get(fan, None) is None:
+            if not self.fc.has_fan(fan):
                 logger.error('Unable to find fan data for fan : "%d" ' % fan)
                 errors = True
 
@@ -58,45 +62,50 @@ class FanControl():
 
         self.cfg = cfg
 
-    def set_speed(self, fan_id, speed):
-        fan = self.fans.get(fan_id, None)
-        if fan is None:
-            logger.error('Unable to set fanspeed for fan "%d" as it doesnt exist' % fan_id)
-            return
+    def run_sensors(self):
+        sensors = self.cfg.get_required_sensors()
 
-        max_speed = int(fan['max'])
-        if max_speed < speed:
-            logger.warn('Trying to set fanspeed "%d" above the max "%d" for fan %d (rpm has been limited to %d)' % (speed, max_speed, fan_id, max_speed))
-            speed = max_speed
+        for sensor in sensors:
+            s = self.sensors.get(sensor)
+            if s.get('current_log', None) is None:
+                s['current_log'] = []
 
-        last_speed = fan.get('last_speed', -1)
-        if last_speed == speed:
-            return
+            s['current_log'].append(int(self.__read_temp(s)) / 1000)
 
-        logger.info('setting fan "%d" to %d rpm' % (fan_id, speed))
-        fan['last_speed'] = speed
+            while len(s['current_log']) > self.cfg.sliding_window:
+                s['current_log'].pop(0)
 
-        filename = os.path.join(self.applesmc, 'fan%d_min' % fan_id)
-        with open(filename, 'w') as f:
-            f.write('%d' % speed)
+            s['current'] = sum(s['current_log']) / len(s['current_log'])
+
+        fans = self.cfg.get_fan_speed(self.sensors)
+
+        for fan in fans:
+            self.fc.set_speed(fan, fans[fan])
+
+    def run_light(self):
+        light = self.kb.get_light()
+
+        self.light_log.append(light)
+        while len(self.light_log) > self.cfg.sliding_window:
+            self.light_log.pop(0)
+
+        light_avg = sum(self.light_log) / len(self.light_log)
+
+        brightness = self.cfg.get_keyboard_brightness(light_avg)
+        self.kb.set_brightness(brightness)
 
     def run(self):
         while 1:
             if self.cfg is None:
                 break
 
-            sensors = self.cfg.get_required_sensors()
+            # Check lighting and adjust keyboard backlight
+            self.run_light()
 
-            for sensor in sensors:
-                s = self.sensors.get(sensor)
-                s['current'] = int(self.__read_temp(s)) / 1000
+            # Check the CPU temp and adjust fan speed
+            self.run_sensors()
 
-            fans = self.cfg.get_fan_speed(self.sensors)
-
-            for fan in fans:
-                self.set_speed(fan, fans[fan])
-
-            time.sleep(self.cfg.get_sleep_time())
+            time.sleep(self.cfg.sleep_time)
 
     def __find_sys_dirs(self):
         base_dir = '/sys/devices'
@@ -132,26 +141,9 @@ class FanControl():
             self.sensors[temp_info['label']] = temp_info
 
     def __load_applesmc(self):
-        self.fans = {}
-
-        for fan_min in glob.glob(os.path.join(self.applesmc, 'fan*_min')):
-            fan = {}
-            fan_id = os.path.basename(fan_min)[3:]
-            fan_id = int(fan_id[:fan_id.find('_')])
-            for prop in self.fan_properties:
-                fan[prop] = self.__read_fan(fan_id, prop)
-
-            if fan['min'] is None:
-                logger.error('unable to read information for fan %d' % fan_id)
-                continue
-
-            logger.info('Found fan: "%s" max RPM : %s' % (fan['label'], fan['max']))
-
-            self.fans[fan_id] = fan
-
         for label in glob.glob(os.path.join(self.applesmc, 'temp*_label')):
             sensor = {}
-            sensor_id = os.path.basename(fan_min)[3:]
+            sensor_id = os.path.basename(label)[4:]
             sensor_id = int(sensor_id[:sensor_id.find('_')])
 
             sensor['id'] = sensor_id
@@ -161,12 +153,12 @@ class FanControl():
             logger.info('Found sensor: %s' % sensor['label'])
             self.sensors[sensor['label']] = sensor
 
+        self.light = os.path.join(self.applesmc, 'light')
+        if not os.path.isfile(self.light):
+            self.light = None
+
     def __read_temp(self, sensor):
         return self.__read_file(sensor['path'])
-
-    def __read_fan(self, fan_id, config):
-        filename = os.path.join(self.applesmc, 'fan%d_%s' % (fan_id, config))
-        return self.__read_file(filename)
 
     def __read_file(self, filename):
         try:

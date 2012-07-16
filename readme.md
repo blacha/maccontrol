@@ -3,8 +3,8 @@ Python daemon to control fan speeds of macbooks using the applemsc (and coretemp
 
 ## Requirements
 
-applesmc
-python-daemon - apt-get install python-daemon
+  - applesmc
+  - python-daemon - apt-get install python-daemon
 
 ## Config
 This is a example config for a MacBookPro Retina, and should be located in /etc/macfancontrol.conf
