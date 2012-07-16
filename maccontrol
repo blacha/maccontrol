@@ -8,7 +8,7 @@ except ImportError:
     logging.error("Unable to import 'daemon' please install python-daemon (apt-get install python-daemon)")
     exit()
 
-CONFIG_FILE = 'maccontrol.conf'
+CONFIG_FILE = '/etc/maccontrol.conf'
 LOG_FILE = '/var/log/maccontrol.log'
 LOG_LEVEL = logging.INFO
 
