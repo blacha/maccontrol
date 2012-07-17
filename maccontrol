@@ -25,4 +25,11 @@ with daemon.DaemonContext():
     logger.setLevel(LOG_LEVEL)
 
     fc = MacControl(CONFIG_FILE)
-    fc.run()
+    while 1:
+        try:
+            fc.run()
+        except KeyboardInterrupt, e:
+            logging.error('Got KeyboardInterrupt exiting')
+            break
+        except Exception, e:
+            logging.error('%s' % e)
