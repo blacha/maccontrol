@@ -29,7 +29,7 @@ with daemon.DaemonContext():
         try:
             fc.run()
         except KeyboardInterrupt, e:
-            logging.error('Got KeyboardInterrupt exiting')
+            logger.error('Got KeyboardInterrupt exiting')
             break
         except Exception, e:
-            logging.error('%s' % e)
+            logger.error('%s' % e)

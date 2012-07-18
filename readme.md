@@ -13,12 +13,14 @@ The controller will find the highest speed based on the list of config options p
 
     {
         /* Time to sleep between updates (must be > 0.5 seconds) */
-        "sleep": 0.2,
+        "sleep": 1,
         /* Sliding window size to use for moinitoring Temp/Brightness */
         "window": 3,
         /*
             Backlight controls, will use the highest brightness it can based on the light input sensor
             Sensor values decrease for the darker it is.
+             20 + direct sunlight
+             12 - Bright Room light
            */
         "backlight": [
             {"sensor": 10, "brightness": 50},
