@@ -128,7 +128,7 @@ class MacControl():
 
         if self.coretemp is None:
             return
-
+        names = []
         for temp in glob.glob(os.path.join(self.coretemp, 'temp*_label')):
             temp_id = os.path.basename(temp)[4:]
             temp_id = int(temp_id[:temp_id.find('_')])
@@ -137,10 +137,13 @@ class MacControl():
             temp_info['label'] = self.__read_file(temp)
             temp_info['path'] = os.path.join(self.coretemp, 'temp%d_input' % temp_id)
 
-            logger.info('Found sensor: "%s"' % temp_info['label'])
             self.sensors[temp_info['label']] = temp_info
+            names.append(temp_info['label'])
+
+        logger.info('Found %d coretemp sensors %s' % (len(names), ', '.join(names)))
 
     def __load_applesmc(self):
+        names = []
         for label in glob.glob(os.path.join(self.applesmc, 'temp*_label')):
             sensor = {}
             sensor_id = os.path.basename(label)[4:]
@@ -150,8 +153,10 @@ class MacControl():
             sensor['path'] = os.path.join(self.applesmc, 'temp%d_input' % sensor_id)
             sensor['label'] = self.__read_file(label)
 
-            logger.info('Found sensor: %s' % sensor['label'])
             self.sensors[sensor['label']] = sensor
+            names.append(sensor['label'])
+
+        logger.info('Found %d applesmc sensors %s' % (len(names), ', '.join(names)))
 
         self.light = os.path.join(self.applesmc, 'light')
         if not os.path.isfile(self.light):
@@ -161,8 +166,10 @@ class MacControl():
         return self.__read_file(sensor['path'])
 
     def __read_file(self, filename):
+
         try:
             with open(filename, 'r') as f:
                 return f.read().strip()
         except IOError, e:
             logger.error('Unable to read property from %s because %s' % (filename, e))
+            return 0

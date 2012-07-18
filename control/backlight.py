@@ -1,5 +1,7 @@
 import os
+import logging
 
+logger = logging.getLogger('maccontrol')
 SENSOR_FILE = 'light'
 BACKLIGHT_PATH = 'leds/smc::kbd_backlight'
 
@@ -35,7 +37,11 @@ class BackLightControl:
             f.write('%d' % brightness)
 
     def get_light(self):
-        with open(self.light_sensor, 'r') as f:
-            data = f.read().strip()
-            self.current_light = int(data[1:data.find(',')])
-            return self.current_light
+        try:
+            with open(self.light_sensor, 'r') as f:
+                data = f.read().strip()
+                self.current_light = int(data[1:data.find(',')])
+                return self.current_light
+        except IOError, e:
+            logger.error('Unable to read %s as %s' % (self.light_sensor, e))
+            return 0

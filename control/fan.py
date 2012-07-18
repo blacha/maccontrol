@@ -39,7 +39,7 @@ class FanControl:
 
     def __read_fans(self):
         self.fans = {}
-
+        names = []
         for fan_min in glob.glob(os.path.join(self.applesmc, 'fan*_min')):
             fan = {}
             fan_id = os.path.basename(fan_min)[3:]
@@ -51,9 +51,10 @@ class FanControl:
                 logger.error('unable to read information for fan %d' % fan_id)
                 continue
 
-            logger.info('Found fan: "%s" max RPM : %s' % (fan['label'], fan['max']))
-
+            names.append('%d' % fan_id)
             self.fans[fan_id] = fan
+
+        logger.info('Found %d fans %s' % (len(self.fans), ', '.join(names)))
 
     def __read_fan(self, fan_id, prop=None):
         if prop is None:
